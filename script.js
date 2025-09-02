@@ -1,7 +1,7 @@
 // ===========================
-// VinylRoll - script.js (v9)
+// VinylRoll - script.js (v11)
 // ===========================
-const STORAGE_KEY = "vinylroll_v9";
+const STORAGE_KEY = "vinylroll_v11";
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
@@ -32,12 +32,16 @@ const editLimitedWrap = $("#editLimitedWrap");
 const editLimitedDetail = $("#editLimitedDetail");
 const editComment = $("#editComment");
 
-// Émoji actions
+// Émojis actions
 const searchBtn = $("#searchBtn");
 const generateBtn = $("#generateBtn");
 const deleteBtn = $("#deleteBtn");
 const cancelBtn = $("#cancelBtn");
 const saveBtn = $("#saveBtn");
+
+// Import fichiers
+const importJsonInput = $("#importFile");
+const importDiscogsInput = $("#importDiscogsFile");
 
 let editingId = null;
 
@@ -52,6 +56,7 @@ const state = {
 // -------- Toast util --------
 let toastTimer = null;
 function showToast(msg, ms = 1800) {
+  if (!toast) { alert(msg); return; }
   toast.textContent = msg;
   toast.classList.remove("hidden");
   clearTimeout(toastTimer);
@@ -120,7 +125,7 @@ $("#addBtn").onclick = async () => {
   setTab(stateSel === "wishlist" ? "wishlist" : (stateSel === "preorder" ? "preorder" : "library"));
 };
 
-// -------- Export / Import / Wipe --------
+// -------- Export --------
 $("#exportBtn").onclick = () => {
   const blob = new Blob([JSON.stringify(state.items, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -129,6 +134,7 @@ $("#exportBtn").onclick = () => {
   URL.revokeObjectURL(url);
 };
 
+// -------- Normalisation --------
 function normalizeText(v) {
   if (v === null || v === undefined) return "";
   if (typeof v === "number" && !Number.isFinite(v)) return "";
@@ -147,9 +153,43 @@ function normalizeState(v) {
   return s ? "owned" : "wishlist";
 }
 
-$("#importFile").onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+// -------- Détection de doublons --------
+function findDuplicate(artist, album) {
+  const norm = s => (s || "").trim().toLowerCase();
+  return state.items.find(it => norm(it.artist) === norm(artist) && norm(it.album) === norm(album));
+}
+
+async function handleImportRecords(newRecs) {
+  for (const rec of newRecs) {
+    const dup = findDuplicate(rec.artist, rec.album);
+    if (dup) {
+      // prompt simple et efficace: 1 Remplacer, 2 Doubler, 3 Passer
+      const choice = prompt(
+        `Doublon trouvé:\n${dup.artist} — ${dup.album}\n\n1 = Remplacer\n2 = Doubler\n3 = Passer`,
+        "1"
+      );
+      if (choice === "1") {
+        rec.id = dup.id;
+        const idx = state.items.findIndex(x => x.id === dup.id);
+        state.items[idx] = rec;
+      } else if (choice === "2") {
+        rec.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+        state.items.push(rec);
+      } else {
+        continue; // passer
+      }
+    } else {
+      rec.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+      state.items.push(rec);
+    }
+  }
+  save(); populateArtistsDatalist(); render();
+  showPostImportTabHint();
+}
+
+// -------- Import JSON --------
+importJsonInput.onchange = async (e) => {
+  const file = e.target.files[0]; if (!file) return;
   try {
     const text = await file.text();
     const arr = JSON.parse(text);
@@ -162,7 +202,7 @@ $("#importFile").onchange = async (e) => {
       const type = normalizeText(x.type) === "limited" ? "limited" : "standard";
       const stateVal = normalizeState(x.state);
       return {
-        id: x.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+        id: x.id || null,
         artist, album,
         year: normalizeYear(x.year),
         type,
@@ -173,20 +213,116 @@ $("#importFile").onchange = async (e) => {
       };
     }).filter(Boolean);
 
-    state.items = cleaned;
-    save(); populateArtistsDatalist(); render();
-
-    const hasOwned = state.items.some(it => it.state === "owned");
-    const hasWL = state.items.some(it => it.state === "wishlist");
-    const hasPO = state.items.some(it => it.state === "preorder");
-    if (!hasOwned && !hasWL && hasPO) setTab("preorder");
-    else if (!hasOwned && hasWL && !hasPO) setTab("wishlist");
-    else setTab("library");
+    await handleImportRecords(cleaned);
+    showToast(`Import JSON: ${cleaned.length} entrées traitées.`);
   } catch {
-    alert("Fichier invalide.");
+    alert("Fichier JSON invalide.");
   } finally { e.target.value = ""; }
 };
 
+// -------- Import CSV Discogs --------
+function parseCSV(text) {
+  const rows = [];
+  let cur = []; let cell = ""; let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], next = text[i+1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { cell += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { cell += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { cur.push(cell); cell = ""; }
+      else if (ch === '\r') { /* ignore */ }
+      else if (ch === '\n') { cur.push(cell); rows.push(cur); cur = []; cell = ""; }
+      else { cell += ch; }
+    }
+  }
+  if (cell.length > 0 || cur.length > 0) { cur.push(cell); rows.push(cur); }
+  return rows;
+}
+
+const LIMIT_KEYWORDS = [
+  "limited","ltd","deluxe","colored","coloured","colour","marbled",
+  "splatter","picture disc","pic disc","numbered","indie","exclusive",
+  "rsd","record store day","box set","boxset","special edition"
+];
+
+function detectYearFromRow(obj) {
+  for (const key of ["Released","Year","Released Year"]) {
+    if (key in obj && obj[key]) {
+      const m = String(obj[key]).match(/\b(19|20)\d{2}\b/);
+      if (m) return parseInt(m[0], 10);
+    }
+  }
+  return null;
+}
+function detectTypeAndDetail(fmt, notes) {
+  const blob = `${fmt || ""} ${notes || ""}`.toLowerCase();
+  if (LIMIT_KEYWORDS.some(k => blob.includes(k))) {
+    const detail = (fmt || "").replace(/\s+/g, " ").trim();
+    return { type: "limited", detail: detail || null };
+    }
+  return { type: "standard", detail: null };
+}
+
+function mapDiscogsRow(obj) {
+  const artist = normalizeText(obj["Artist"] ?? obj["Artists"]);
+  const album  = normalizeText(obj["Title"] ?? obj["Release Title"]);
+  if (!artist || !album) return null;
+  const notes = normalizeText(obj["Notes"]);
+  const fmt   = normalizeText(obj["Format"]);
+  const { type, detail } = detectTypeAndDetail(fmt, notes);
+  let state = "owned";
+  const folder = normalizeText(obj["Folder"] ?? obj["Collection Folder"]).toLowerCase();
+  if (["wantlist","wishlist"].includes(folder)) state = "wishlist";
+
+  return {
+    id: null,
+    artist,
+    album,
+    year: detectYearFromRow(obj),
+    type,
+    limitedDetail: detail,
+    state,
+    comment: notes || null,
+    coverUrl: null
+  };
+}
+
+importDiscogsInput.onchange = async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (!rows.length) throw new Error("CSV vide.");
+    const headers = rows[0];
+    const out = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.length === 1 && r[0].trim() === "") continue;
+      const obj = {};
+      headers.forEach((h, idx) => { obj[h] = r[idx] ?? ""; });
+      const mapped = mapDiscogsRow(obj);
+      if (mapped) out.push(mapped);
+    }
+    await handleImportRecords(out);
+    showToast(`Import Discogs: ${out.length} entrées traitées.`);
+  } catch {
+    alert("CSV Discogs invalide ou non reconnu.");
+  } finally { e.target.value = ""; }
+};
+
+function showPostImportTabHint() {
+  const hasOwned = state.items.some(it => it.state === "owned");
+  const hasWL = state.items.some(it => it.state === "wishlist");
+  const hasPO = state.items.some(it => it.state === "preorder");
+  if (!hasOwned && !hasWL && hasPO) setTab("preorder");
+  else if (!hasOwned && hasWL && !hasPO) setTab("wishlist");
+  else setTab("library");
+}
+
+// -------- Wipe --------
 $("#wipeBtn").onclick = () => {
   if (confirm("Tout effacer? C’est irréversible, comme une rayure profonde.")) {
     state.items = []; save(); populateArtistsDatalist(); render();
@@ -325,8 +461,7 @@ saveBtn.onclick = (e) => {
   };
   updateItem(editingId, patch);
   populateArtistsDatalist();
-
-  closeModal();               // on ferme maintenant, tout de suite
+  closeModal();
   showToast("Modifications enregistrées.");
 };
 
@@ -378,7 +513,6 @@ async function generateAndStorePlaceholder(id, size = 512) {
   return true;
 }
 
-// Émoji actions
 searchBtn.onclick = async () => {
   if (!editingId) return;
   const ok = await fetchCover(editingId);

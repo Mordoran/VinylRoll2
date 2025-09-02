@@ -1,266 +1,178 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
-    <title>VinylRoll</title>
-    <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="theme-color" content="#000000" />
-  </head>
-  <body>
-    <div class="wrap">
-      <header class="header">
-        <h1>VinylRoll</h1>
-        <div class="header-actions">
-          <button id="fetchAllBtn" class="btn ghost small">
-            Chercher toutes les jaquettes
-          </button>
-        </div>
-      </header>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="library">💿 Bibliothèque</button>
-        <button class="tab" data-tab="add">➕ Ajouter</button>
-        <button class="tab" data-tab="wishlist">⭐ Wishlist</button>
-        <button class="tab" data-tab="preorder">⏳ Préco</button>
-        <button class="tab" data-tab="random">🔀 Random</button>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>VinylRoll</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#000000">
+</head>
+<body>
+  <div class="wrap">
+    <header class="header">
+      <h1>VinylRoll</h1>
+      <div class="header-actions">
+        <button id="fetchAllBtn" class="btn ghost small">Chercher toutes les jaquettes</button>
       </div>
+    </header>
 
-      <!-- Recherche + tri -->
-      <div id="controls">
-        <input id="search" placeholder="Recherche artiste, album, note..." />
-        <div class="sorts">
-          <label>
-            Trier par
-            <select id="sortBy">
-              <option value="artist">artiste</option>
-              <option value="album">album</option>
-              <option value="year">année</option>
-              <option value="state">état</option>
-              <option value="type">type</option>
-            </select>
-          </label>
-          <label>
-            Ordre
-            <select id="sortDir">
-              <option value="asc">asc</option>
-              <option value="desc">desc</option>
-            </select>
-          </label>
-        </div>
-      </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="library">💿 Bibliothèque</button>
+      <button class="tab" data-tab="add">➕ Ajouter</button>
+      <button class="tab" data-tab="wishlist">⭐ Wishlist</button>
+      <button class="tab" data-tab="preorder">⏳ Préco</button>
+      <button class="tab" data-tab="random">🔀 Random</button>
+    </div>
 
-      <!-- Onglet Ajouter -->
-      <div id="add" class="hidden">
-        <div class="card">
-          <label>Artiste</label>
-          <input id="artist" placeholder="Ex: Jean Leloup" list="artistsList" />
-          <datalist id="artistsList"></datalist>
-
-          <label>Album</label>
-          <input id="album" placeholder="Ex: Le Dôme" />
-
-          <div class="row">
-            <div>
-              <label>Année</label>
-              <input id="year" inputmode="numeric" placeholder="1996" />
-            </div>
-            <div>
-              <label>Type</label>
-              <select id="type">
-                <option value="standard">standard</option>
-                <option value="limited">limited</option>
-              </select>
-            </div>
-          </div>
-
-          <label>Détail édition limitée</label>
-          <input id="limitedDetail" placeholder="Marble Red 180g #/500" />
-
-          <label>État</label>
-          <select id="state">
-            <option value="owned">owned</option>
-            <option value="preorder">preorder</option>
-            <option value="wishlist">wishlist</option>
+    <!-- Recherche + tri -->
+    <div id="controls">
+      <input id="search" placeholder="Recherche artiste, album, note...">
+      <div class="sorts">
+        <label>
+          Trier par
+          <select id="sortBy">
+            <option value="artist">artiste</option>
+            <option value="album">album</option>
+            <option value="year">année</option>
+            <option value="state">état</option>
+            <option value="type">type</option>
           </select>
+        </label>
+        <label>
+          Ordre
+          <select id="sortDir">
+            <option value="asc">asc</option>
+            <option value="desc">desc</option>
+          </select>
+        </label>
+      </div>
+    </div>
 
-          <label>Commentaire</label>
-          <textarea
-            id="comment"
-            rows="2"
-            placeholder="Copie clean, label XL"
-          ></textarea>
+    <!-- Onglet Ajouter -->
+    <div id="add" class="hidden">
+      <div class="card">
+        <label>Artiste</label>
+        <input id="artist" placeholder="Ex: Jean Leloup" list="artistsList">
+        <datalist id="artistsList"></datalist>
 
-          <!-- Toolbar en émojis -->
-          <div class="toolbar toolbar-emoji">
-            <button
-              id="addBtn"
-              class="emoji-btn primary"
-              title="Ajouter"
-              aria-label="Ajouter"
-            >
-              ➕
-            </button>
+        <label>Album</label>
+        <input id="album" placeholder="Ex: Le Dôme">
 
-            <button
-              id="exportBtn"
-              class="emoji-btn"
-              title="Exporter JSON"
-              aria-label="Exporter JSON"
-            >
-              📤​
-            </button>
-
-            <label
-              class="emoji-btn"
-              for="importFile"
-              title="Importer JSON"
-              aria-label="Importer JSON"
-              >📥​</label
-            >
-            <input
-              id="importFile"
-              type="file"
-              accept="application/json"
-              class="hidden"
-            />
-
-            <button
-              id="wipeBtn"
-              class="emoji-btn danger"
-              title="Tout effacer"
-              aria-label="Tout effacer"
-            >
-              🗑️
-            </button>
+        <div class="row">
+          <div>
+            <label>Année</label>
+            <input id="year" inputmode="numeric" placeholder="1996">
+          </div>
+          <div>
+            <label>Type</label>
+            <select id="type">
+              <option value="standard">standard</option>
+              <option value="limited">limited</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <!-- Listes -->
-      <div id="list"></div>
+        <label>Détail édition limitée</label>
+        <input id="limitedDetail" placeholder="Marble Red 180g #/500">
 
-      <!-- Onglet Random -->
-      <div id="random" class="hidden">
-        <button id="randomBtn" class="btn secondary">
-          Choisir un vinyle au hasard
-        </button>
-        <div id="pick" class="card"></div>
-      </div>
-    </div>
+        <label>État</label>
+        <select id="state">
+          <option value="owned">owned</option>
+          <option value="preorder">preorder</option>
+          <option value="wishlist">wishlist</option>
+        </select>
 
-    <!-- Modale custom -->
-    <div
-      id="editModal"
-      class="modal hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="editTitle"
-    >
-      <div class="modal-backdrop"></div>
-      <div class="modal-content">
-        <form class="edit-form" autocomplete="off">
-          <h2 id="editTitle">Modifier le vinyle</h2>
+        <label>Commentaire</label>
+        <textarea id="comment" rows="2" placeholder="Copie clean, label XL"></textarea>
 
-          <div class="edit-grid">
-            <div>
-              <label>Artiste</label>
-              <input id="editArtist" list="artistsList" />
-            </div>
-            <div>
-              <label>Album</label>
-              <input id="editAlbum" />
-            </div>
-            <div>
-              <label>Année</label>
-              <input id="editYear" inputmode="numeric" placeholder="1996" />
-            </div>
-            <div>
-              <label>État</label>
-              <select id="editState">
-                <option value="owned">owned</option>
-                <option value="preorder">preorder</option>
-                <option value="wishlist">wishlist</option>
-              </select>
-            </div>
-            <div>
-              <label>Type</label>
-              <select id="editType">
-                <option value="standard">standard</option>
-                <option value="limited">limited</option>
-              </select>
-            </div>
-            <div id="editLimitedWrap">
-              <label>Détail édition limitée</label>
-              <input
-                id="editLimitedDetail"
-                placeholder="Marble Red 180g #/500"
-              />
-            </div>
-            <div class="full">
-              <label>Commentaire</label>
-              <textarea id="editComment" rows="2"></textarea>
-            </div>
-          </div>
+        <!-- Toolbar en émojis -->
+        <div class="toolbar toolbar-emoji">
+          <button id="addBtn" class="emoji-btn primary" title="Ajouter" aria-label="Ajouter">➕</button>
 
-          <!-- Actions émojis -->
-          <div class="emoji-actions" role="group" aria-label="Actions">
-            <button
-              type="button"
-              id="searchBtn"
-              class="emoji-btn"
-              title="Chercher jaquette"
-              aria-label="Chercher jaquette"
-            >
-              🔎
-            </button>
-            <button
-              type="button"
-              id="generateBtn"
-              class="emoji-btn"
-              title="Générer une jaquette"
-              aria-label="Générer une jaquette"
-            >
-              🖼️
-            </button>
-            <button
-              type="button"
-              id="deleteBtn"
-              class="emoji-btn danger"
-              title="Supprimer"
-              aria-label="Supprimer"
-            >
-              🗑️
-            </button>
-            <button
-              type="button"
-              id="cancelBtn"
-              class="emoji-btn"
-              title="Annuler"
-              aria-label="Annuler"
-            >
-              ✖️
-            </button>
-            <button
-              id="saveBtn"
-              class="emoji-btn primary"
-              title="Enregistrer"
-              aria-label="Enregistrer"
-            >
-              💾
-            </button>
-          </div>
-        </form>
+          <button id="exportBtn" class="emoji-btn" title="Exporter JSON" aria-label="Exporter JSON">⬇️</button>
+
+          <label class="emoji-btn" for="importFile" title="Importer JSON" aria-label="Importer JSON">⬆️</label>
+          <input id="importFile" type="file" accept="application/json" class="hidden">
+
+          <label class="emoji-btn" for="importDiscogsFile" title="Importer CSV Discogs" aria-label="Importer CSV Discogs">📄⬆️</label>
+          <input id="importDiscogsFile" type="file" accept=".csv,text/csv" class="hidden">
+
+          <button id="wipeBtn" class="emoji-btn danger" title="Tout effacer" aria-label="Tout effacer">🗑️</button>
+        </div>
       </div>
     </div>
 
-    <!-- Toast -->
-    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+    <!-- Listes -->
+    <div id="list"></div>
 
-    <script src="script.js"></script>
-  </body>
+    <!-- Random -->
+    <div id="random" class="hidden">
+      <button id="randomBtn" class="btn secondary">Choisir un vinyle au hasard</button>
+      <div id="pick" class="card"></div>
+    </div>
+  </div>
+
+  <!-- Modale custom -->
+  <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <form class="edit-form" autocomplete="off">
+        <h2 id="editTitle">Modifier le vinyle</h2>
+
+        <div class="edit-grid">
+          <div>
+            <label>Artiste</label>
+            <input id="editArtist" list="artistsList">
+          </div>
+          <div>
+            <label>Album</label>
+            <input id="editAlbum">
+          </div>
+          <div>
+            <label>Année</label>
+            <input id="editYear" inputmode="numeric" placeholder="1996">
+          </div>
+          <div>
+            <label>État</label>
+            <select id="editState">
+              <option value="owned">owned</option>
+              <option value="preorder">preorder</option>
+              <option value="wishlist">wishlist</option>
+            </select>
+          </div>
+          <div>
+            <label>Type</label>
+            <select id="editType">
+              <option value="standard">standard</option>
+              <option value="limited">limited</option>
+            </select>
+          </div>
+          <div id="editLimitedWrap">
+            <label>Détail édition limitée</label>
+            <input id="editLimitedDetail" placeholder="Marble Red 180g #/500">
+          </div>
+          <div class="full">
+            <label>Commentaire</label>
+            <textarea id="editComment" rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- Actions émojis -->
+        <div class="emoji-actions" role="group" aria-label="Actions">
+          <button type="button" id="searchBtn" class="emoji-btn" title="Chercher jaquette" aria-label="Chercher jaquette">🔎</button>
+          <button type="button" id="generateBtn" class="emoji-btn" title="Générer une jaquette" aria-label="Générer une jaquette">🖼️</button>
+          <button type="button" id="deleteBtn" class="emoji-btn danger" title="Supprimer" aria-label="Supprimer">🗑️</button>
+          <button type="button" id="cancelBtn" class="emoji-btn" title="Annuler" aria-label="Annuler">✖️</button>
+          <button id="saveBtn" class="emoji-btn primary" title="Enregistrer" aria-label="Enregistrer">💾</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
 </html>
